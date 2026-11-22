@@ -6,9 +6,12 @@ from loguru import logger
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.worker import PipelineWorker
 from pipecat.runner.types import SmallWebRTCRunnerArguments
+from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.transports.base_transport import TransportParams
 from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 from pipecat.workers.runner import WorkerRunner
+
+from processors import TranscriptPrinter
 
 async def bot(runner_args:SmallWebRTCRunnerArguments):
     transport = SmallWebRTCTransport(
@@ -16,7 +19,15 @@ async def bot(runner_args:SmallWebRTCRunnerArguments):
         params=TransportParams(audio_in_enabled=True, audio_out_enabled=True),
     )
 
-    pipeline = Pipeline([transport.input(), transport.output()])
+    stt = DeepgramSTTService(api_key=os.environ["DEEPGRAM_API_KEY"])
+    pipeline = Pipeline(
+        [
+            transport.input(), 
+            stt,
+            TranscriptPrinter(),
+            transport.output()
+        ]
+    )
 
     worker = PipelineWorker(pipeline)
     runner = WorkerRunner(handle_sigint=runner_args.handle_sigint)
