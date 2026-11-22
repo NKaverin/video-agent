@@ -1,0 +1,16 @@
+# Secrets
+.env
+
+# oVRcome material, never public
+videos/
+scenes/
+prompts/
+runs/
+
+# Python
+.venv/
+__pycache__/
+
+# Node
+node_modules/
+dist/
