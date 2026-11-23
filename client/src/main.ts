@@ -13,6 +13,14 @@ function element<T extends HTMLElement>(selector: string): T {
 const connectButton = element<HTMLButtonElement>("#connect");
 const statusText = element<HTMLSpanElement>("#status");
 const botAudio = element<HTMLAudioElement>("#bot-audio");
+const transcript = element<HTMLOListElement>("#transcript");
+
+function addLine(speaker: string, text: string): void {
+  const line = document.createElement("li");
+  line.textContent = speaker + ": " + text;
+  transcript.append(line);
+  line.scrollIntoView({ block: "nearest" });
+}
 
 const client = new PipecatClient({
   transport: new SmallWebRTCTransport(),
@@ -27,6 +35,18 @@ client.on(RTVIEvent.TransportStateChanged, (state) => {
 client.on(RTVIEvent.TrackStarted, (track, participant) => {
   if (track.kind === "audio" && !participant?.local) {
     botAudio.srcObject = new MediaStream([track]);
+  }
+});
+
+client.on(RTVIEvent.UserInput, (data) => {
+  if (data.final) {
+    addLine("You", data.text);
+  }
+});
+
+client.on(RTVIEvent.BotOutput, (data) => {
+  if (data.spoken_status === "completed") {
+    addLine("Bot", data.text);
   }
 });
 
