@@ -34,6 +34,7 @@ from pipecat.turns.user_stop import TurnAnalyzerUserTurnStopStrategy
 from pipecat.turns.user_turn_strategies import UserTurnStrategies
 from pipecat.workers.runner import WorkerRunner
 
+from logs import LOG_FILE, setup_logging
 from processors import FrameLogger, TranscriptPrinter
 
 load_dotenv(override=True)
@@ -56,6 +57,8 @@ def load_system_instructions() -> str:
 
 
 async def bot(runner_args: SmallWebRTCRunnerArguments):
+    setup_logging()
+    logger.info("Full log: {}", LOG_FILE)
     transport = SmallWebRTCTransport(
         webrtc_connection=runner_args.webrtc_connection,
         params=TransportParams(audio_in_enabled=True, audio_out_enabled=True),
