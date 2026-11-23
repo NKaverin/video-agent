@@ -11,7 +11,7 @@ def speaking_s(text: str) -> float:
     return INTERCEPT_S + PER_CHAR_S * len(text)
 
 
-def reserverd_s(text: str) -> float:
+def reserved_s(text: str) -> float:
     speaking = speaking_s(text)
     return max(speaking + MIN_MARGIN_S, speaking * MARGIN_FACTOR)
 

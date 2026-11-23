@@ -28,7 +28,7 @@ class SceneTimeline(FrameProcessor):
         self._playing = False
         self._active: set[str] = set()
         self._bot_speaking = False
-        self.event_has_floor = False
+        self._event_has_floor = False
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
@@ -60,9 +60,9 @@ class SceneTimeline(FrameProcessor):
 
     async def _update_floor(self, time: float, events: list[Event]) -> None:
         has_floor = any(tag in FLOOR_TAGS for event in events for tag in event.tags)
-        if has_floor == self.event_has_floor:
+        if has_floor == self._event_has_floor:
             return
-        self._stranger_hevent_has_flooras_floor = has_floor
+        self._event_has_floor = has_floor
         logger.info("{:6.1f}s floor: {}", time, "event" if has_floor else "open")
         if has_floor and self._bot_speaking:
             # Planned speech should already have finished by now
