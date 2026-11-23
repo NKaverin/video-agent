@@ -33,10 +33,11 @@ from pipecat.turns.user_start import (
 from pipecat.turns.user_stop import TurnAnalyzerUserTurnStopStrategy
 from pipecat.turns.user_turn_strategies import UserTurnStrategies
 from pipecat.workers.runner import WorkerRunner
-from scene import load_scenes
 
 from logs import LOG_FILE, setup_logging
 from processors import FrameLogger, TranscriptPrinter
+from scene import load_scenes
+from timeline import SceneTimeline
 
 load_dotenv(override=True)
 
@@ -105,6 +106,7 @@ async def bot(runner_args: SmallWebRTCRunnerArguments):
             FrameLogger("in"),
             stt,
             TranscriptPrinter(),
+            SceneTimeline(scene),
             user_aggregator,
             llm,
             tts,

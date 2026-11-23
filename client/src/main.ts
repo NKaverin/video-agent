@@ -59,6 +59,19 @@ client.on(RTVIEvent.Disconnected, () => {
   connectButton.textContent = "Connect";
 });
 
+function sendVideoTime(): void {
+  if (client.state === "ready") {
+    client.sendClientMessage("video-time", {
+      time: video.currentTime,
+      playing: !video.paused,
+    });
+  }
+}
+
+for (const name of ["play", "pause", "seeked", "timeupdate", "ended"]) {
+  video.addEventListener(name, sendVideoTime);
+}
+
 async function toggleConnection(): Promise<void> {
   connectButton.disabled = true;
   try {
@@ -69,6 +82,8 @@ async function toggleConnection(): Promise<void> {
         endpoint: "/start",
         requestData: { body: { scene } },
       });
+      connectButton.textContent = "Disconnect";
+      sendVideoTime();
     }
   } catch (error) {
     console.error("connection failed", error);
