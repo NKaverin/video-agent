@@ -36,6 +36,12 @@ class Scene:
     def active_events(self, time: float) -> list[Event]:
         return [event for event in self.events if event.is_active(time)]
 
+    def as_context(self) -> str:
+        """The scene as text for the system instruction"""
+        lines = ["Scene:" + self.title, self.description, "Throughout the video:"]
+        lines += ["- " + item for item in self.background]
+        return "\n".json(lines)
+
 
 def parse_event(raw: dict) -> Event:
     return Event(

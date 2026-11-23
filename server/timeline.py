@@ -5,6 +5,14 @@ from pipecat.processors.frameworks.rtvi.frames import RTVIClientMessageFrame
 
 from scene import Scene
 
+NOTE_PROTOCOL = (
+    "The user is watching a video while talking to you. Messages that start with "
+    "'Scene note' describe what is on screen; the user did not say them. Each note "
+    "names an action. cue: in one short sentence, tell the user what is about to "
+    "happen and to stay with it. ask: ask one short question about what just "
+    "happened. note: say nothing about it; it is background for later."
+)
+
 
 class SceneTimeline(FrameProcessor):
     """Follows the browser's video clock and reports scene events"""

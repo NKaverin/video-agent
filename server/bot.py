@@ -37,7 +37,7 @@ from pipecat.workers.runner import WorkerRunner
 from logs import LOG_FILE, setup_logging
 from processors import FrameLogger, TranscriptPrinter
 from scene import load_scenes
-from timeline import SceneTimeline
+from timeline import NOTE_PROTOCOL, SceneTimeline
 
 load_dotenv(override=True)
 
@@ -72,11 +72,12 @@ async def bot(runner_args: SmallWebRTCRunnerArguments):
 
     stt = DeepgramSTTService(api_key=os.environ["DEEPGRAM_API_KEY"])
 
+    instruction_parts = [load_system_instructions(), NOTE_PROTOCOL, scene.as_context()]
     llm = GoogleLLMService(
         api_key=os.environ["GOOGLE_API_KEY"],
         settings=GoogleLLMService.Settings(
             model="gemini-3.8-flash",
-            system_instruction=load_system_instructions(),
+            system_instruction="\n\n".join(instruction_parts),
             thinking=GoogleLLMService.ThinkingConfig(thinking_level="low"),
         ),
     )
