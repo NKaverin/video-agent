@@ -34,6 +34,7 @@ from pipecat.turns.user_stop import TurnAnalyzerUserTurnStopStrategy
 from pipecat.turns.user_turn_strategies import UserTurnStrategies
 from pipecat.workers.runner import WorkerRunner
 
+from floor import FloorGate
 from logs import LOG_FILE, setup_logging
 from processors import FrameLogger, TranscriptPrinter
 from scene import load_scenes
@@ -109,6 +110,7 @@ async def bot(runner_args: SmallWebRTCRunnerArguments):
             TranscriptPrinter(),
             SceneTimeline(scene),
             user_aggregator,
+            FloorGate(),
             llm,
             tts,
             FrameLogger("out"),

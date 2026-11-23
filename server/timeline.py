@@ -1,8 +1,13 @@
 from loguru import logger
-from pipecat.frames.frames import Frame, LLMMessagesAppendFrame
+from pipecat.frames.frames import (
+    BotStoppedSpeakingFrame,
+    Frame,
+    LLMMessagesAppendFrame,
+)
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 from pipecat.processors.frameworks.rtvi.frames import RTVIClientMessageFrame
 
+from floor import FloorFrame
 from scene import Event, Scene
 
 SCENE_PROTOCOL = (
@@ -10,6 +15,7 @@ SCENE_PROTOCOL = (
     "the user sees at that moment; the user did not say them. Use them to "
     "understand what the user talks about. Do not comment on them unprompted."
 )
+FLOOR_TAGS = ("spoken_to", "wait")
 
 LATE_SECS = 2.0
 COLDOWN_SECS = 10.0
@@ -23,12 +29,18 @@ class SceneTimeline(FrameProcessor):
         self._scene = scene
         self._playing = False
         self._active: set[str] = set()
+        self._bot_speaking = False
+        self._stranger_has_floor = False
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
 
         if isinstance(frame, RTVIClientMessageFrame) and frame.type == "video-time":
             await self._on_video_time(frame.data["time"], frame.data["playing"])
+        elif isinstance(frame, BotStoppedSpeakingFrame):
+            self._bot_speaking = True
+        elif isinstance(frame, BotStoppedSpeakingFrame):
+            self._bot_speaking = False
 
         await self.push_frame(frame, direction)
 
@@ -46,6 +58,17 @@ class SceneTimeline(FrameProcessor):
             )
         )
 
+    async def _update_floor(self, time: float, events: list[Event]) -> None:
+        has_floor = any(tag in FLOOR_TAGS for event in events for tag in event.tags)
+        if has_floor == self._stranger_has_floor:
+            return
+        self._stranger_has_floor = has_floor
+        logger.info("{:6.1f}s floor: {}", time, "video" if has_floor else "open")
+        if has_floor and self._bot_speaking:
+            # Planned speech should already have finished by now
+            await self.broadcast_interruption()
+        await self.push_frame(FloorFrame(stranger_has_floor=has_floor))
+
     async def _on_video_time(self, time: float, playing: bool) -> None:
         if playing != self._playing:
             logger.info("{:6.1f}s video {}", time, "playing" if playing else "paused")
@@ -53,6 +76,7 @@ class SceneTimeline(FrameProcessor):
 
         events = self._scene.active_events(time)
         now_active = {event.id for event in events}
+        await self._update_floor(time, events)
 
         for event_id in sorted(self._active - now_active):
             logger.info("{:6.1f}s end   {}", time, event_id)
