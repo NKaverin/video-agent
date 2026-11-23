@@ -2,7 +2,10 @@ import os
 
 from dotenv import load_dotenv
 from loguru import logger
+from pipecat.audio.turn.smart_turn.base_smart_turn import SmartTurnParams
+from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
 from pipecat.audio.vad.silero import SileroVADAnalyzer
+from pipecat.audio.vad.vad_analyzer import VADParams
 from pipecat.frames.frames import LLMRunFrame
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.worker import (
@@ -21,6 +24,12 @@ from pipecat.services.deepgram.tts import DeepgramTTSService
 from pipecat.services.google.llm import GoogleLLMService
 from pipecat.transports.base_transport import TransportParams
 from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
+from pipecat.turns.user_start import (
+    TranscriptionUserTurnStartStrategy,
+    VADUserTurnStartStrategy,
+)
+from pipecat.turns.user_stop import TurnAnalyzerUserTurnStopStrategy
+from pipecat.turns.user_turn_strategies import UserTurnStrategies
 from pipecat.workers.runner import WorkerRunner
 
 from processors import FrameLogger, TranscriptPrinter
@@ -56,10 +65,18 @@ async def bot(runner_args: SmallWebRTCRunnerArguments):
         settings=DeepgramTTSService.Settings(voice="aura-2-helena-en"),
     )
 
+    vad = SileroVADAnalyzer(params=VADParams(start_secs=0.2, stop_secs=0.2))
+    smart_turn = LocalSmartTurnAnalyzerV3(params=SmartTurnParams(stop_secs=3.0))
+    turn_strategies = UserTurnStrategies(
+        start=[VADUserTurnStartStrategy(), TranscriptionUserTurnStartStrategy()],
+        stop=[TurnAnalyzerUserTurnStopStrategy(turn_analyzer=smart_turn)],
+    )
     context = LLMContext()
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
-        user_params=LLMUserAggregatorParams(vad_analyzer=SileroVADAnalyzer()),
+        user_params=LLMUserAggregatorParams(
+            vad_analyzer=vad, user_turn_strategies=turn_strategies
+        ),
     )
 
     pipeline = Pipeline(
