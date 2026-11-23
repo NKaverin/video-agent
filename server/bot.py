@@ -2,11 +2,14 @@ import os
 
 from dotenv import load_dotenv
 from loguru import logger
-
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.frames.frames import LLMRunFrame
 from pipecat.pipeline.pipeline import Pipeline
-from pipecat.pipeline.worker import PipelineParams, PipelineWorker
+from pipecat.pipeline.worker import (
+    PipelineParams,
+    PipelineWorker,
+    ProcessorUnusablePolicy,
+)
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
@@ -30,7 +33,8 @@ SYSTEM_INSTRUCTION = (
     "to one or two sentences."
 )
 
-async def bot(runner_args:SmallWebRTCRunnerArguments):
+
+async def bot(runner_args: SmallWebRTCRunnerArguments):
     transport = SmallWebRTCTransport(
         webrtc_connection=runner_args.webrtc_connection,
         params=TransportParams(audio_in_enabled=True, audio_out_enabled=True),
@@ -48,7 +52,7 @@ async def bot(runner_args:SmallWebRTCRunnerArguments):
     )
 
     tts = DeepgramTTSService(
-        api_key = os.environ["DEEPGRAM_API_KEY"],
+        api_key=os.environ["DEEPGRAM_API_KEY"],
         settings=DeepgramTTSService.Settings(voice="aura-2-helena-en"),
     )
 
@@ -60,20 +64,21 @@ async def bot(runner_args:SmallWebRTCRunnerArguments):
 
     pipeline = Pipeline(
         [
-            transport.input(), 
+            transport.input(),
             stt,
             TranscriptPrinter(),
             user_aggregator,
             llm,
             tts,
             transport.output(),
-            assistant_aggregator
+            assistant_aggregator,
         ]
     )
 
     worker = PipelineWorker(
         pipeline,
         params=PipelineParams(enable_metrics=True, enable_usage_metrics=True),
+        processor_unusable_policy=ProcessorUnusablePolicy.END,
     )
     runner = WorkerRunner(handle_sigint=runner_args.handle_sigint)
     await runner.add_workers(worker)
@@ -81,7 +86,9 @@ async def bot(runner_args:SmallWebRTCRunnerArguments):
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
         logger.info("Client connected")
-        context.add_message({"role": "developer", "content": "Greet the user in one sentence."})
+        context.add_message(
+            {"role": "developer", "content": "Greet the user in one sentence."}
+        )
         await worker.queue_frames([LLMRunFrame()])
 
     @transport.event_handler("on_client_disconnected")
@@ -91,8 +98,8 @@ async def bot(runner_args:SmallWebRTCRunnerArguments):
 
     await runner.run()
 
+
 if __name__ == "__main__":
     from pipecat.runner.run import main
 
     main()
-
