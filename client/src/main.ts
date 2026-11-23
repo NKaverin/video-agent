@@ -12,6 +12,7 @@ function element<T extends HTMLElement>(selector: string): T {
 
 const connectButton = element<HTMLButtonElement>("#connect");
 const statusText = element<HTMLSpanElement>("#status");
+const botAudio = element<HTMLAudioElement>("#bot-audio");
 
 const client = new PipecatClient({
   transport: new SmallWebRTCTransport(),
@@ -21,6 +22,12 @@ const client = new PipecatClient({
 
 client.on(RTVIEvent.TransportStateChanged, (state) => {
   statusText.textContent = state;
+});
+
+client.on(RTVIEvent.TrackStarted, (track, participant) => {
+  if (track.kind === "audio" && !participant?.local) {
+    botAudio.srcObject = new MediaStream([track]);
+  }
 });
 
 client.on(RTVIEvent.Disconnected, () => {
