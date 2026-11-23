@@ -2,6 +2,8 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from loguru import logger
+
 ROOT = Path(__file__).resolve().parent.parent
 
 SCENES_FILE = ROOT / "scenes" / "scenes.json"
@@ -61,6 +63,7 @@ def parse_scene(scene_id: str, raw: dict) -> Scene:
 
 def load_scenes() -> dict[str, Scene]:
     path = SCENES_FILE if SCENES_FILE.exists() else ""
+    logger.info("Scenes from {}", path)
     raw_scenes = json.loads(path.read_text(encoding="utf-8"))
     return {
         scene_id: parse_scene(scene_id, raw) for scene_id, raw in raw_scenes.items()

@@ -14,6 +14,11 @@ const connectButton = element<HTMLButtonElement>("#connect");
 const statusText = element<HTMLSpanElement>("#status");
 const botAudio = element<HTMLAudioElement>("#bot-audio");
 const transcript = element<HTMLOListElement>("#transcript");
+const video = element<HTMLVideoElement>("#video");
+
+const scene =
+  new URLSearchParams(window.location.search).get("scene") ?? "plaza";
+video.src = "/" + scene + ".mp4";
 
 function addLine(speaker: string, text: string): void {
   const line = document.createElement("li");
@@ -60,8 +65,10 @@ async function toggleConnection(): Promise<void> {
     if (client.connected) {
       await client.disconnect();
     } else {
-      await client.connect({ webrtcRequestParams: { endpoint: "/api/offer" } });
-      connectButton.textContent = "Disconnect";
+      await client.connect({
+        endpoint: "/start",
+        requestData: { body: { scene } },
+      });
     }
   } catch (error) {
     console.error("connection failed", error);

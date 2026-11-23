@@ -33,6 +33,7 @@ from pipecat.turns.user_start import (
 from pipecat.turns.user_stop import TurnAnalyzerUserTurnStopStrategy
 from pipecat.turns.user_turn_strategies import UserTurnStrategies
 from pipecat.workers.runner import WorkerRunner
+from scene import load_scenes
 
 from logs import LOG_FILE, setup_logging
 from processors import FrameLogger, TranscriptPrinter
@@ -59,6 +60,10 @@ def load_system_instructions() -> str:
 async def bot(runner_args: SmallWebRTCRunnerArguments):
     setup_logging()
     logger.info("Full log: {}", LOG_FILE)
+
+    body = runner_args.body or {}
+    scene = load_scenes()[body.get("scene", "plaza")]
+    logger.info("Scene: {}", scene.title)
     transport = SmallWebRTCTransport(
         webrtc_connection=runner_args.webrtc_connection,
         params=TransportParams(audio_in_enabled=True, audio_out_enabled=True),
