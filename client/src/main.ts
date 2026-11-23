@@ -78,7 +78,7 @@ async function toggleConnection(): Promise<void> {
     if (client.connected) {
       await client.disconnect();
     } else {
-      await client.connect({
+      await client.startBotAndConnect({
         endpoint: "/start",
         requestData: { body: { scene } },
       });

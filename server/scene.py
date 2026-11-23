@@ -54,7 +54,7 @@ def parse_scene(scene_id: str, raw: dict) -> Scene:
         id=scene_id,
         title=raw["title"],
         duration=raw["duration"],
-        description=tuple(raw["description"]),
+        description=raw["description"],
         background=tuple(raw["background"]),
         events=tuple(parse_event(event) for event in raw["events"]),
         triggers=tuple(raw["triggers"]),

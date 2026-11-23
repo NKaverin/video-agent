@@ -13,7 +13,7 @@ class SceneTimeline(FrameProcessor):
         super().__init__()
         self._scene = scene
         self._playing = False
-        self._active: str[str] = set()
+        self._active: set[str] = set()
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
@@ -32,10 +32,11 @@ class SceneTimeline(FrameProcessor):
         now_active = {event.id for event in events}
 
         for event_id in sorted(self._active - now_active):
-            logger.info("{:6:1}s end {}", time, event_id)
+            logger.info("{:6.1}s end {}", time, event_id)
         for event in events:
             if event.id not in self._active:
                 tags = ", ".join(event.tags)
                 logger.info(
                     "{:6.1f}s start {} [{}] {}", time, event.id, tags, event.text
                 )
+        self._active = now_active
