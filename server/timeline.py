@@ -74,7 +74,7 @@ class SceneTimeline(FrameProcessor):
         now_active = {event.id for event in events}
 
         for event_id in sorted(self._active - now_active):
-            logger.info("{:6.1}s end {}", time, event_id)
+            logger.info("{:6.1f}s end   {}", time, event_id)
         for event in events:
             if event.id not in self._active:
                 tags = ", ".join(event.tags)

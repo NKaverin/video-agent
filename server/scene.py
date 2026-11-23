@@ -38,7 +38,7 @@ class Scene:
 
     def as_context(self) -> str:
         """The scene as text for the system instruction"""
-        lines = ["Scene:" + self.title, self.description, "Throughout the video:"]
+        lines = ["Scene: " + self.title, self.description, "Throughout the video:"]
         lines += ["- " + item for item in self.background]
         return "\n".join(lines)
 
@@ -68,9 +68,10 @@ def parse_scene(scene_id: str, raw: dict) -> Scene:
 
 
 def load_scenes() -> dict[str, Scene]:
-    path = SCENES_FILE if SCENES_FILE.exists() else ""
-    logger.info("Scenes from {}", path)
-    raw_scenes = json.loads(path.read_text(encoding="utf-8"))
+    if not SCENES_FILE.exists():
+        raise FileNotFoundError("No scene metadata")
+    logger.info("Scenes from {}", SCENES_FILE)
+    raw_scenes = json.loads(SCENES_FILE.read_text(encoding="utf-8"))
     return {
         scene_id: parse_scene(scene_id, raw) for scene_id, raw in raw_scenes.items()
     }
