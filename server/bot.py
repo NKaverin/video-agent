@@ -23,7 +23,7 @@ from pipecat.transports.base_transport import TransportParams
 from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 from pipecat.workers.runner import WorkerRunner
 
-from processors import TranscriptPrinter
+from processors import FrameLogger, TranscriptPrinter
 
 load_dotenv(override=True)
 
@@ -65,11 +65,13 @@ async def bot(runner_args: SmallWebRTCRunnerArguments):
     pipeline = Pipeline(
         [
             transport.input(),
+            FrameLogger("in"),
             stt,
             TranscriptPrinter(),
             user_aggregator,
             llm,
             tts,
+            FrameLogger("out"),
             transport.output(),
             assistant_aggregator,
         ]
