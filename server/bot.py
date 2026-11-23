@@ -7,6 +7,7 @@ from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnal
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADParams
 from pipecat.frames.frames import LLMRunFrame
+from pipecat.observers.user_bot_latency_observer import UserBotLatencyObserver
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.worker import (
     PipelineParams,
@@ -94,13 +95,21 @@ async def bot(runner_args: SmallWebRTCRunnerArguments):
         ]
     )
 
+    latency_observer = UserBotLatencyObserver()
+
     worker = PipelineWorker(
         pipeline,
         params=PipelineParams(enable_metrics=True, enable_usage_metrics=True),
         processor_unusable_policy=ProcessorUnusablePolicy.END,
+        observers=[latency_observer],
     )
     runner = WorkerRunner(handle_sigint=runner_args.handle_sigint)
     await runner.add_workers(worker)
+
+    @latency_observer.event_handler("on_latency_breakdown")
+    async def on_latency_breakdown(observer, breakdown):
+        for line in breakdown.turn_contribution_lines():
+            logger.info(line)
 
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
