@@ -9,3 +9,21 @@ header {
   gap: 12px;
   align-items: center;
 }
+
+main {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+video {
+  flex: 2;
+  min-width: 0;
+}
+
+#transcript {
+  flex: 1;
+  max-height: 80vh;
+  overflow-y: auto;
+  margin: 0;
+}
