@@ -135,6 +135,10 @@ async def bot(runner_args: SmallWebRTCRunnerArguments):
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
         logger.info("Client connected")
+
+    @worker.rtvi.event_handler("on_client_ready")
+    async def on_client_ready(rtvi):
+        logger.info("client ready")
         context.add_message(
             {"role": "developer", "content": "Greet the user in one sentence."}
         )
