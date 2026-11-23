@@ -1,5 +1,6 @@
 from loguru import logger
 from pipecat.frames.frames import (
+    BotStartedSpeakingFrame,
     BotStoppedSpeakingFrame,
     Frame,
     LLMMessagesAppendFrame,
@@ -17,9 +18,6 @@ SCENE_PROTOCOL = (
 )
 FLOOR_TAGS = ("spoken_to", "wait")
 
-LATE_SECS = 2.0
-COLDOWN_SECS = 10.0
-
 
 class SceneTimeline(FrameProcessor):
     """Follows the browser's video clock and reports scene events"""
@@ -30,7 +28,7 @@ class SceneTimeline(FrameProcessor):
         self._playing = False
         self._active: set[str] = set()
         self._bot_speaking = False
-        self._stranger_has_floor = False
+        self.event_has_floor = False
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
@@ -39,7 +37,7 @@ class SceneTimeline(FrameProcessor):
             await self._on_video_time(frame.data["time"], frame.data["playing"])
         elif isinstance(frame, RTVIClientMessageFrame) and frame.type == "video-ended":
             await self._on_video_ended()
-        elif isinstance(frame, BotStoppedSpeakingFrame):
+        elif isinstance(frame, BotStartedSpeakingFrame):
             self._bot_speaking = True
         elif isinstance(frame, BotStoppedSpeakingFrame):
             self._bot_speaking = False
@@ -62,14 +60,14 @@ class SceneTimeline(FrameProcessor):
 
     async def _update_floor(self, time: float, events: list[Event]) -> None:
         has_floor = any(tag in FLOOR_TAGS for event in events for tag in event.tags)
-        if has_floor == self._stranger_has_floor:
+        if has_floor == self.event_has_floor:
             return
-        self._stranger_has_floor = has_floor
-        logger.info("{:6.1f}s floor: {}", time, "video" if has_floor else "open")
+        self._stranger_hevent_has_flooras_floor = has_floor
+        logger.info("{:6.1f}s floor: {}", time, "event" if has_floor else "open")
         if has_floor and self._bot_speaking:
             # Planned speech should already have finished by now
             await self.broadcast_interruption()
-        await self.push_frame(FloorFrame(stranger_has_floor=has_floor))
+        await self.push_frame(FloorFrame(event_has_floor=has_floor))
 
     async def _on_video_ended(self) -> None:
         logger.info("Video ended")

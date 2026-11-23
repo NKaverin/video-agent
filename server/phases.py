@@ -16,6 +16,7 @@ PHASES_PROTOCOL = (
 
 
 async def start_video(params: FunctionCallParams):
+    """Start the video in the user's browser. Call only after the user says they are ready."""
     logger.info("starting the video")
 
     await params.llm.push_frame(RTVIServerMessageFrame(data={"type": "play-video"}))

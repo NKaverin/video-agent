@@ -7,7 +7,9 @@ from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 
 @dataclass
 class FloorFrame(SystemFrame):
-    stranger_has_floor: bool
+    """Whether an event in the video has the floor: the bot must not speak."""
+
+    event_has_floor: bool
 
 
 class FloorGate(FrameProcessor):
@@ -19,10 +21,10 @@ class FloorGate(FrameProcessor):
         await super().process_frame(frame, direction)
 
         if isinstance(frame, FloorFrame):
-            self._held = frame.stranger_has_floor
+            self._held = frame.event_has_floor
             return
         if isinstance(frame, LLMContextFrame) and self._held:
-            logger.info("Reply held: the person in the video has the floor")
+            logger.info("Reply held: an event in the video has the floor")
             return
 
         await self.push_frame(frame, direction)
