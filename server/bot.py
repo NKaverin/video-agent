@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from loguru import logger
@@ -43,6 +44,16 @@ SYSTEM_INSTRUCTION = (
     "to one or two sentences."
 )
 
+PROMPT_FILE = Path(__file__).resolve().parent.parent / "prompts" / "system.md"
+
+
+def load_system_instructions() -> str:
+    if PROMPT_FILE.exists():
+        logger.info("System instruction from {}", PROMPT_FILE)
+        return PROMPT_FILE.read_text(encoding="utf-8")
+    logger.info("System instruction: default")
+    return SYSTEM_INSTRUCTION
+
 
 async def bot(runner_args: SmallWebRTCRunnerArguments):
     transport = SmallWebRTCTransport(
@@ -56,7 +67,7 @@ async def bot(runner_args: SmallWebRTCRunnerArguments):
         api_key=os.environ["GOOGLE_API_KEY"],
         settings=GoogleLLMService.Settings(
             model="gemini-3.8-flash",
-            system_instruction=SYSTEM_INSTRUCTION,
+            system_instruction=load_system_instructions(),
             thinking=GoogleLLMService.ThinkingConfig(thinking_level="low"),
         ),
     )
