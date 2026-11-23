@@ -65,6 +65,7 @@ async def bot(runner_args:SmallWebRTCRunnerArguments):
             TranscriptPrinter(),
             user_aggregator,
             llm,
+            tts,
             transport.output(),
             assistant_aggregator
         ]
