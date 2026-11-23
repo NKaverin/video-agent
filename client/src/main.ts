@@ -55,6 +55,12 @@ client.on(RTVIEvent.BotOutput, (data) => {
   }
 });
 
+client.on(RTVIEvent.ServerMessage, (message) => {
+  if (message.type === "play-video") {
+    video.play().catch((error) => console.error("video did not start", error));
+  }
+});
+
 client.on(RTVIEvent.Disconnected, () => {
   connectButton.textContent = "Connect";
 });
