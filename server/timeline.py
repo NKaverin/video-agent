@@ -1,9 +1,10 @@
 from loguru import logger
-from pipecat.frames.frames import Frame
+from pipecat.frames.frames import Frame, LLMMessagesAppendFrame
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 from pipecat.processors.frameworks.rtvi.frames import RTVIClientMessageFrame
 
-from scene import Scene
+from policy import SPEAKING_ACTIONS, action_for
+from scene import Event, Scene
 
 NOTE_PROTOCOL = (
     "The user is watching a video while talking to you. Messages that start with "
@@ -27,11 +28,20 @@ class SceneTimeline(FrameProcessor):
         await super().process_frame(frame, direction)
 
         if isinstance(frame, RTVIClientMessageFrame) and frame.type == "video-time":
-            self._on_video_time(frame.data["time"], frame.data["playing"])
+            await self._on_video_time(frame.data["time"], frame.data["playing"])
 
         await self.push_frame(frame, direction)
 
-    def _on_video_time(self, time: float, playing: bool) -> None:
+    async def _add_note(self, event: Event, action: str) -> None:
+        note = "Scene note (" + action + "): " + event.text
+        await self.push_frame(
+            LLMMessagesAppendFrame(
+                messages=[{"role": "developer", "content": note}],
+                run_llm=action in SPEAKING_ACTIONS,
+            )
+        )
+
+    async def _on_video_time(self, time: float, playing: bool) -> None:
         if playing != self._playing:
             logger.info("{:6.1f}s video {}", time, "playing" if playing else "paused")
             self._playing = playing
@@ -44,7 +54,14 @@ class SceneTimeline(FrameProcessor):
         for event in events:
             if event.id not in self._active:
                 tags = ", ".join(event.tags)
+                action = action_for(event)
                 logger.info(
-                    "{:6.1f}s start {} [{}] {}", time, event.id, tags, event.text
+                    "{:6.1f}s start {} [{}] {}: {}",
+                    time,
+                    event.id,
+                    tags,
+                    action,
+                    event.text,
                 )
+                await self._add_note(event, action)
         self._active = now_active
