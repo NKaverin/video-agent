@@ -40,7 +40,7 @@ class Scene:
         """The scene as text for the system instruction"""
         lines = ["Scene:" + self.title, self.description, "Throughout the video:"]
         lines += ["- " + item for item in self.background]
-        return "\n".json(lines)
+        return "\n".join(lines)
 
 
 def parse_event(raw: dict) -> Event:

@@ -1,3 +1,5 @@
+from time import monotonic
+
 from loguru import logger
 from pipecat.frames.frames import Frame, LLMMessagesAppendFrame
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
@@ -15,6 +17,7 @@ NOTE_PROTOCOL = (
 )
 
 LATE_SECS = 2.0
+COLDOWN_SECS = 10.0
 
 
 class SceneTimeline(FrameProcessor):
@@ -25,6 +28,7 @@ class SceneTimeline(FrameProcessor):
         self._scene = scene
         self._playing = False
         self._active: set[str] = set()
+        self._last_spoken = float("-inf")
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
@@ -43,6 +47,13 @@ class SceneTimeline(FrameProcessor):
                 "{:6.1f}s {} joined late, note instead of {}", time, event.id, action
             )
             return "note"
+        now = monotonic()
+        if now - self._last_spoken < COLDOWN_SECS:
+            logger.info(
+                "{:6.1f}s {} in cooldown, note instead of {}", time, event.id, action
+            )
+            return "note"
+        self._last_spoken = now
         return action
 
     async def _add_note(self, event: Event, action: str) -> None:
