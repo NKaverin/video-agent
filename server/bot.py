@@ -36,6 +36,7 @@ from pipecat.workers.runner import WorkerRunner
 
 from floor import FloorGate
 from logs import LOG_FILE, setup_logging
+from phases import PHASES_PROTOCOL, start_video
 from processors import FrameLogger, TranscriptPrinter
 from scene import load_scenes
 from timeline import SCENE_PROTOCOL, SceneTimeline
@@ -73,7 +74,12 @@ async def bot(runner_args: SmallWebRTCRunnerArguments):
 
     stt = DeepgramSTTService(api_key=os.environ["DEEPGRAM_API_KEY"])
 
-    instruction_parts = [load_system_instructions(), SCENE_PROTOCOL, scene.as_context()]
+    instruction_parts = [
+        load_system_instructions(),
+        PHASES_PROTOCOL,
+        SCENE_PROTOCOL,
+        scene.as_context(),
+    ]
     llm = GoogleLLMService(
         api_key=os.environ["GOOGLE_API_KEY"],
         settings=GoogleLLMService.Settings(
@@ -94,7 +100,7 @@ async def bot(runner_args: SmallWebRTCRunnerArguments):
         start=[VADUserTurnStartStrategy(), TranscriptionUserTurnStartStrategy()],
         stop=[TurnAnalyzerUserTurnStopStrategy(turn_analyzer=smart_turn)],
     )
-    context = LLMContext()
+    context = LLMContext(tools=[start_video])
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
         user_params=LLMUserAggregatorParams(
@@ -143,7 +149,7 @@ async def bot(runner_args: SmallWebRTCRunnerArguments):
     async def on_client_ready(rtvi):
         logger.info("client ready")
         context.add_message(
-            {"role": "developer", "content": "Greet the user in one sentence."}
+            {"role": "developer", "content": "Greet the user and begin the briefing."}
         )
         await worker.queue_frames([LLMRunFrame()])
 
