@@ -37,6 +37,8 @@ class SceneTimeline(FrameProcessor):
 
         if isinstance(frame, RTVIClientMessageFrame) and frame.type == "video-time":
             await self._on_video_time(frame.data["time"], frame.data["playing"])
+        elif isinstance(frame, RTVIClientMessageFrame) and frame.type == "video-ended":
+            await self._on_video_ended()
         elif isinstance(frame, BotStoppedSpeakingFrame):
             self._bot_speaking = True
         elif isinstance(frame, BotStoppedSpeakingFrame):
@@ -68,6 +70,15 @@ class SceneTimeline(FrameProcessor):
             # Planned speech should already have finished by now
             await self.broadcast_interruption()
         await self.push_frame(FloorFrame(stranger_has_floor=has_floor))
+
+    async def _on_video_ended(self) -> None:
+        logger.info("Video ended")
+        await self.push_frame(
+            LLMMessagesAppendFrame(
+                messages=[{"role": "developer", "content": "The video has ended."}],
+                run_llm=True,
+            )
+        )
 
     async def _on_video_time(self, time: float, playing: bool) -> None:
         if playing != self._playing:

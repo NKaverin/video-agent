@@ -78,6 +78,12 @@ for (const name of ["play", "pause", "seeked", "timeupdate", "ended"]) {
   video.addEventListener(name, sendVideoTime);
 }
 
+video.addEventListener("ended", () => {
+  if (client.state === "ready") {
+    client.sendClientMessage("video-ended", {});
+  }
+});
+
 async function toggleConnection(): Promise<void> {
   connectButton.disabled = true;
   try {
