@@ -14,6 +14,8 @@ NOTE_PROTOCOL = (
     "happened. note: say nothing about it; it is background for later."
 )
 
+LATE_SECS = 2.0
+
 
 class SceneTimeline(FrameProcessor):
     """Follows the browser's video clock and reports scene events"""
@@ -31,6 +33,17 @@ class SceneTimeline(FrameProcessor):
             await self._on_video_time(frame.data["time"], frame.data["playing"])
 
         await self.push_frame(frame, direction)
+
+    def _timed_action(self, event: Event, action: str, time: float) -> str:
+        """The policy's action would be a note if would come too late"""
+        if action not in SPEAKING_ACTIONS:
+            return action
+        if time - event.start > LATE_SECS:
+            logger.info(
+                "{:6.1f}s {} joined late, note instead of {}", time, event.id, action
+            )
+            return "note"
+        return action
 
     async def _add_note(self, event: Event, action: str) -> None:
         note = "Scene note (" + action + "): " + event.text
@@ -54,7 +67,7 @@ class SceneTimeline(FrameProcessor):
         for event in events:
             if event.id not in self._active:
                 tags = ", ".join(event.tags)
-                action = action_for(event)
+                action = self._timed_action(event, action_for(event), time)
                 logger.info(
                     "{:6.1f}s start {} [{}] {}: {}",
                     time,
