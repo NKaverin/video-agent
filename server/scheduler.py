@@ -114,7 +114,7 @@ def status(slot: Slot) -> str:
         notes.append("short")
     shift = slot.start - slot.line.start_s
     if abs(shift) >= 0.05:
-        notes.append("moved" + format(shift, "+1f") + "s")
+        notes.append("moved " + format(shift, "+.1f") + "s")
     return ", ".join(notes) or "ok"
 
 
