@@ -82,7 +82,7 @@ async def make_plan(
 
 def log_plan(plan: Plan) -> None:
     for line in sorted(plan.lines, key=lambda line: line.start_s):
-        logger.info(
+        logger.debug(
             "{:6.1f}s {} {:<7} P{} {:4.1f}s {}",
             line.start_s,
             line.event_id,

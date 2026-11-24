@@ -34,6 +34,7 @@ from pipecat.turns.user_stop import TurnAnalyzerUserTurnStopStrategy
 from pipecat.turns.user_turn_strategies import UserTurnStrategies
 from pipecat.workers.runner import WorkerRunner
 
+from executor import Executor
 from floor import FloorGate
 from logs import LOG_FILE, setup_logging
 from phases import PHASES_PROTOCOL, start_video
@@ -111,6 +112,8 @@ async def bot(runner_args: SmallWebRTCRunnerArguments):
         ),
     )
 
+    planner = Planner(scene, behaviour + "\n\n" + load_planner_prompt())
+
     pipeline = Pipeline(
         [
             transport.input(),
@@ -120,6 +123,7 @@ async def bot(runner_args: SmallWebRTCRunnerArguments):
             SceneTimeline(scene),
             user_aggregator,
             FloorGate(),
+            Executor(scene, planner),
             llm,
             tts,
             FrameLogger("out"),
@@ -129,8 +133,6 @@ async def bot(runner_args: SmallWebRTCRunnerArguments):
     )
 
     latency_observer = UserBotLatencyObserver()
-
-    planner = Planner(scene, behaviour + "\n\n" + load_planner_prompt())
 
     @user_aggregator.event_handler("on_user_turn_stopped")
     async def on_user_turn_stopped(aggregator, strategy, message):
