@@ -1,10 +1,13 @@
+import asyncio
+import os
 from pathlib import Path
+from time import monotonic
 from typing import Literal
 
 from google import genai
-from google.genai import types
+from google.genai import errors, types
 from loguru import logger
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from scene import Scene
 from timing import budget_table, reserved_s
@@ -86,3 +89,49 @@ def log_plan(plan: Plan) -> None:
             reserved_s(line.text),
             line.text,
         )
+
+
+class Planner:
+    """An initial plan from the scene"""
+
+    def __init__(self, scene: Scene, system_instruction: str):
+        self.client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
+        self._scene = scene
+        self._system_instruction = system_instruction
+        self._said: list[str] = []
+        self._task: asyncio.Task | None = None
+
+    async def _make(self, said: list[str]) -> None:
+        started = monotonic()
+        try:
+            plan = await make_plan(
+                self._client, self._system_instruction, self._scene, said, self.plan
+            )
+        except (errors.APIError, ValidationError) as error:
+            logger.error("Planning failed: {}", error)
+            return
+        self.plan = plan
+        logger.info(
+            "Plan ready in {.1f}s, from {} things the user said",
+            monotonic() - started,
+            len(said),
+        )
+        log_plan(plan)
+
+    def start(self) -> None:
+        self._task = asyncio.create_task(self.make([]))
+
+    def user_said(self, text: str) -> None:
+        self._said.append(text)
+
+    async def _adapt(self, initial: asyncio.Task | None) -> None:
+        if initial:
+            await initial
+        await self._make(list(self._said))
+
+    def adapt(self) -> None:
+        self._task = asyncio.create_task(self._adapt(self._task))
+
+    async def close(self) -> None:
+        if self._task:
+            self._task.cancel()

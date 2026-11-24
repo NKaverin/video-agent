@@ -37,6 +37,7 @@ from pipecat.workers.runner import WorkerRunner
 from floor import FloorGate
 from logs import LOG_FILE, setup_logging
 from phases import PHASES_PROTOCOL, start_video
+from planner import Planner, load_planner_prompt
 from processors import FrameLogger, TranscriptPrinter
 from scene import load_scenes
 from timeline import SCENE_PROTOCOL, SceneTimeline
@@ -74,8 +75,10 @@ async def bot(runner_args: SmallWebRTCRunnerArguments):
 
     stt = DeepgramSTTService(api_key=os.environ["DEEPGRAM_API_KEY"])
 
+    behaviour = load_system_instructions()
+
     instruction_parts = [
-        load_system_instructions(),
+        behaviour,
         PHASES_PROTOCOL,
         SCENE_PROTOCOL,
         scene.as_context(),
@@ -127,11 +130,19 @@ async def bot(runner_args: SmallWebRTCRunnerArguments):
 
     latency_observer = UserBotLatencyObserver()
 
+    planner = Planner(scene, behaviour + "\n\n" + load_planner_prompt())
+
+    @user_aggregator.event_handler("on_user_turn_stopped")
+    async def on_user_turn_stopped(aggregator, strategy, message):
+        if message.content:
+            planner.user_said(message.content)
+
     worker = PipelineWorker(
         pipeline,
         params=PipelineParams(enable_metrics=True, enable_usage_metrics=True),
         processor_unusable_policy=ProcessorUnusablePolicy.END,
         observers=[latency_observer],
+        app_resources=planner,
     )
     runner = WorkerRunner(handle_sigint=runner_args.handle_sigint)
     await runner.add_workers(worker)
@@ -148,6 +159,7 @@ async def bot(runner_args: SmallWebRTCRunnerArguments):
     @worker.rtvi.event_handler("on_client_ready")
     async def on_client_ready(rtvi):
         logger.info("client ready")
+        planner.start()
         context.add_message(
             {"role": "developer", "content": "Greet the user and begin the briefing."}
         )
@@ -156,6 +168,7 @@ async def bot(runner_args: SmallWebRTCRunnerArguments):
     @transport.event_handler("on_client_disconnected")
     async def on_client_disconnected(transport, client):
         logger.info("Client disconnected")
+        await planner.close()
         await runner.cancel()
 
     await runner.run()
