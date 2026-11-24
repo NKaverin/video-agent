@@ -93,6 +93,14 @@ def make_schedule(
             continue
         free_from = placed[-1].end + GAP_S if placed else 0.0
         slot = fit(line, event, scene, episodes, free_from)
+        if slot is None and placed and placed[-1].line.priority > line.priority:
+            previous = placed.pop()
+            free_from = placed[-1].end + GAP_S if placed else 0.0
+            slot = fit(line, event, scene, episodes, free_from)
+            if slot is None:
+                placed.append(previous)
+            else:
+                dropped.append((previous.line, "made room for " + line.event_id))
         if slot is None:
             dropped.append((line, "no room"))
         else:
