@@ -15,6 +15,8 @@ from timing import budget_table, reserved_s
 PLANNER_MODEL = "gemini-3.8-flash"
 PLANNER_PROMPT = Path(__file__).resolve().parent.parent / "prompts" / "planner.md"
 
+PLAN_FILE = Path(__file__).resolve().parent.parent / "runs" / "plan.json"
+
 
 class PlannedLine(BaseModel):
     event_id: str
@@ -112,6 +114,7 @@ class Planner:
             logger.error("Planning failed: {}", error)
             return
         self.plan = plan
+        PLAN_FILE.write_text(plan.model_dump_json(indent=1), encoding="utf-8")
         logger.info(
             "Plan ready in {:.1f}s, from {} things the user said",
             monotonic() - started,
