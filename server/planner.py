@@ -55,7 +55,7 @@ def plan_request(scene: Scene, said: list[str], current: Plan | None) -> str:
     lines += ["", "Events (id | start-end s | tags | what happens):", *events]
     if current:
         lines += ["", "Current plan:", current.model_dump_json(indent=1)]
-    lines += ["", "What the user said before the video:"]
+    lines += ["", "What the user said, in order:"]
     lines += ["- " + text for text in said] or ["Nothing yet."]
     return "\n".join(lines)
 
@@ -103,6 +103,7 @@ class Planner:
         self._said: list[str] = []
         self._task: asyncio.Task | None = None
         self.plan: Plan | None = None
+        self.watching = False
 
     async def _make(self, said: list[str]) -> None:
         started = monotonic()
@@ -134,6 +135,7 @@ class Planner:
         await self._make(list(self._said))
 
     def adapt(self) -> None:
+        self.watching = True
         self._task = asyncio.create_task(self._adapt(self._task))
 
     async def close(self) -> None:

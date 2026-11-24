@@ -15,6 +15,7 @@ from scheduler import Slot, log_schedule, make_schedule, silent_episodes
 from timing import max_chars
 
 REPLAY_DELAY_S = 1.5
+REPLAN_LEAD_S = 15.0
 
 
 class Executor(FrameProcessor):
@@ -55,10 +56,12 @@ class Executor(FrameProcessor):
     async def _speak_due(self) -> None:
         plan = self._planner.plan
         if plan is not None and plan is not self._plan:
+            cutoff = self._time + REPLAN_LEAD_S if self._plan else self._time
             self._plan = plan
             placed, dropped = make_schedule(self._scene, plan)
             log_schedule(placed, dropped)
-            self._slots = [slot for slot in placed if slot.start >= self._time]
+            kept = [slot for slot in self._slots if slot.start < cutoff]
+            self._slots = kept + [slot for slot in placed if slot.start >= cutoff]
         while self._slots and self._slots[0].start <= self._time:
             await self._say(self._slots.pop(0))
 

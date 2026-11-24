@@ -138,6 +138,8 @@ async def bot(runner_args: SmallWebRTCRunnerArguments):
     async def on_user_turn_stopped(aggregator, strategy, message):
         if message.content:
             planner.user_said(message.content)
+            if planner.watching:
+                planner.adapt()
 
     worker = PipelineWorker(
         pipeline,
