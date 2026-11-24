@@ -34,7 +34,7 @@ def load_planner_prompt() -> str:
     return prompt + "\n\nLongest line that fits:\n" + budget_table()
 
 
-def plan_request(scene: Scene, said: list[str]) -> str:
+def plan_request(scene: Scene, said: list[str], current: Plan | None) -> str:
     events = [
         " | ".join(
             [
@@ -48,17 +48,23 @@ def plan_request(scene: Scene, said: list[str]) -> str:
     ]
     lines = [scene.as_context(), "Video length: " + str(scene.duration) + " s"]
     lines += ["", "Events (id | start-end s | tags | what happens):", *events]
+    if current:
+        lines += ["", "Current plan:", current.model_dump_json(indent=1)]
     lines += ["", "What the user said before the video:"]
     lines += ["- " + text for text in said] or ["Nothing yet."]
     return "\n".join(lines)
 
 
 async def make_plan(
-    client: genai.Client, system_instruction: str, scene: Scene, said: list[str]
+    client: genai.Client,
+    system_instruction: str,
+    scene: Scene,
+    said: list[str],
+    current: Plan | None,
 ) -> Plan:
     response = await client.aio.models.generate_content(
         model=PLANNER_MODEL,
-        contents=plan_request(scene, said),
+        contents=plan_request(scene, said, current),
         config=types.GenerateContentConfig(
             system_instruction=system_instruction,
             response_mime_type="application/json",
