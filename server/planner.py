@@ -81,7 +81,7 @@ async def make_plan(
 def log_plan(plan: Plan) -> None:
     for line in sorted(plan.lines, key=lambda line: line.start_s):
         logger.info(
-            "{:6.1}s {} {:<7} P{} {:4.1f}s {}",
+            "{:6.1f}s {} {:<7} P{} {:4.1f}s {}",
             line.start_s,
             line.event_id,
             line.kind,
@@ -95,11 +95,12 @@ class Planner:
     """An initial plan from the scene"""
 
     def __init__(self, scene: Scene, system_instruction: str):
-        self.client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
+        self._client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
         self._scene = scene
         self._system_instruction = system_instruction
         self._said: list[str] = []
         self._task: asyncio.Task | None = None
+        self.plan: Plan | None = None
 
     async def _make(self, said: list[str]) -> None:
         started = monotonic()
@@ -112,14 +113,14 @@ class Planner:
             return
         self.plan = plan
         logger.info(
-            "Plan ready in {.1f}s, from {} things the user said",
+            "Plan ready in {:.1f}s, from {} things the user said",
             monotonic() - started,
             len(said),
         )
         log_plan(plan)
 
     def start(self) -> None:
-        self._task = asyncio.create_task(self.make([]))
+        self._task = asyncio.create_task(self._make([]))
 
     def user_said(self, text: str) -> None:
         self._said.append(text)
