@@ -1,5 +1,11 @@
 from loguru import logger
-from pipecat.frames.frames import Frame, LLMContextFrame, TTSSpeakFrame
+from pipecat.frames.frames import (
+    Frame,
+    LLMContextFrame,
+    TTSSpeakFrame,
+    UserStartedSpeakingFrame,
+    UserStoppedSpeakingFrame,
+)
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 from pipecat.processors.frameworks.rtvi.frames import RTVIClientMessageFrame
 
@@ -9,8 +15,6 @@ from scheduler import Slot, log_schedule, make_schedule, silent_episodes
 from timing import max_chars
 
 REPLAY_DELAY_S = 1.5
-# A reply shorte than this is not worth it
-MIN_REPLY_CHARS = 20
 
 
 class Executor(FrameProcessor):
@@ -25,6 +29,7 @@ class Executor(FrameProcessor):
         self._slots: list[Slot] = []
         self._time = 0.0
         self._playing = False
+        self._user_speaking = False
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
@@ -34,12 +39,16 @@ class Executor(FrameProcessor):
             self._playing = frame.data["playing"]
             if self._playing:
                 await self._speak_due()
-            elif (
-                isinstance(frame, LLMContextFrame)
-                and self._playing
-                and not self._budget_reply(frame)
-            ):
-                return
+        elif (
+            isinstance(frame, LLMContextFrame)
+            and self._playing
+            and not self._budget_reply(frame)
+        ):
+            return
+        elif isinstance(frame, UserStartedSpeakingFrame):
+            self._user_speaking = True
+        elif isinstance(frame, UserStoppedSpeakingFrame):
+            self._user_speaking = False
 
         await self.push_frame(frame, direction)
 
@@ -51,9 +60,20 @@ class Executor(FrameProcessor):
             log_schedule(placed, dropped)
             self._slots = [slot for slot in placed if slot.start >= self._time]
         while self._slots and self._slots[0].start <= self._time:
-            slot = self._slots.pop(0)
-            logger.info("{:6.1f}s say {} {}", self._time, slot.line.event_id, slot.text)
-            await self.push_frame(TTSSpeakFrame(slot.text))
+            await self._say(self._slots.pop(0))
+
+    async def _say(self, slot: Slot) -> None:
+        essential = slot.line.priority == 1
+        if self._user_speaking and not essential:
+            logger.info(
+                "{:6.1f}s skip {}: the user is speaking", self._time, slot.line.event_id
+            )
+            return
+        text = slot.line.short if self._user_speaking else slot.text
+        logger.info("{:6.1f}s say {} {}", self._time, slot.line.event_id, text)
+        frame = TTSSpeakFrame(text)
+        frame.interruptible = not essential
+        await self.push_frame(frame)
 
     def _next_busy(self) -> float:
         """When the bot must next be quiet: a silent episode or a planned line."""
@@ -64,7 +84,7 @@ class Executor(FrameProcessor):
     def _budget_reply(self, frame: LLMContextFrame) -> bool:
         budget = self._next_busy() - self._time - REPLAY_DELAY_S
         chars = max_chars(budget)
-        if chars < MIN_REPLY_CHARS:
+        if chars == 0:
             logger.info("{:6.1f}s reply held: {:.1f}s free", self._time, budget)
             return False
         logger.info(
